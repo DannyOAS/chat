@@ -1,8 +1,12 @@
 """Basic smoke tests for chatbot API endpoints."""
 from __future__ import annotations
 
-from django.test import TestCase
-from django.urls import reverse
+import pytest
+
+django = pytest.importorskip("django", reason="Django is required for API endpoint tests")
+
+from django.test import TestCase  # type: ignore  # noqa: E402  # imported after guard
+from django.urls import reverse  # type: ignore  # noqa: E402
 
 
 class ChatApiTests(TestCase):
