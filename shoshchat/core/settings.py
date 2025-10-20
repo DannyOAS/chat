@@ -1,6 +1,7 @@
 """Settings for ShoshChat AI Django project."""
 from __future__ import annotations
 
+from datetime import timedelta
 from pathlib import Path
 from typing import Final
 
@@ -24,6 +25,8 @@ SHARED_APPS: Final[list[str]] = [
     "django.contrib.staticfiles",
     "rest_framework",
     "rest_framework.authtoken",
+    "rest_framework_simplejwt.token_blacklist",
+    "accounts",
     "djstripe",
     "tenancy",
 ]
@@ -112,12 +115,25 @@ DEFAULT_AUTO_FIELD: Final[str] = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK: Final[dict[str, object]] = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",
         "rest_framework.authentication.TokenAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
     ),
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.ScopedRateThrottle",
+    ),
+    "DEFAULT_THROTTLE_RATES": {
+        "user": config("DRF_THROTTLE_USER", default="1000/day"),
+        "anon": config("DRF_THROTTLE_ANON", default="100/day"),
+        "auth_login": config("DRF_THROTTLE_AUTH_LOGIN", default="10/min"),
+        "auth_register": config("DRF_THROTTLE_AUTH_REGISTER", default="5/hour"),
+        "chat": config("DRF_THROTTLE_CHAT", default="120/min"),
+    },
 }
 
 DJSTRIPE_FOREIGN_KEY_TO_FIELD: Final[str] = "id"
@@ -138,8 +154,32 @@ CELERY_RESULT_BACKEND: Final[str] = REDIS_URL
 AI_PROVIDER: Final[str] = config("AI_PROVIDER", default="gradient")
 DO_GRADIENT_API_KEY: Final[str] = config("DO_GRADIENT_API_KEY", default="")
 
+SIMPLE_JWT: Final[dict[str, object]] = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": True,
+}
+
 AUDIT_EVENT_TYPES: Final[tuple[str, ...]] = (
     "message.sent",
     "message.received",
     "billing.quota",
 )
+
+SECURE_PROXY_SSL_HEADER: Final[tuple[str, str]] = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT: Final[bool] = config("DJANGO_SECURE_SSL_REDIRECT", default=False, cast=bool)
+SESSION_COOKIE_SECURE: Final[bool] = config("DJANGO_SESSION_COOKIE_SECURE", default=True, cast=bool)
+CSRF_COOKIE_SECURE: Final[bool] = config("DJANGO_CSRF_COOKIE_SECURE", default=True, cast=bool)
+SESSION_COOKIE_SAMESITE: Final[str] = config("DJANGO_SESSION_COOKIE_SAMESITE", default="Lax")
+SECURE_HSTS_SECONDS: Final[int] = config("DJANGO_SECURE_HSTS_SECONDS", default=0, cast=int)
+SECURE_HSTS_INCLUDE_SUBDOMAINS: Final[bool] = config(
+    "DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS", default=False, cast=bool
+)
+SECURE_HSTS_PRELOAD: Final[bool] = config("DJANGO_SECURE_HSTS_PRELOAD", default=False, cast=bool)
+SECURE_REFERRER_POLICY: Final[str] = config("DJANGO_SECURE_REFERRER_POLICY", default="strict-origin")
+CSRF_TRUSTED_ORIGINS: list[str] = config(
+    "DJANGO_CSRF_TRUSTED_ORIGINS", default="", cast=Csv()
+)
+X_FRAME_OPTIONS: Final[str] = "DENY"

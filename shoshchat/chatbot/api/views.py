@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from django.core.exceptions import ImproperlyConfigured
 from rest_framework import generics, permissions, response, status
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from chatbot.models import ChatSession
@@ -12,6 +13,8 @@ from .serializers import ChatRequestSerializer, ChatSessionSerializer
 
 class ChatMessageView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "chat"
 
     def post(self, request, *args, **kwargs):
         serializer = ChatRequestSerializer(data=request.data)

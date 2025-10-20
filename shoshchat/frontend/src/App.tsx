@@ -1,18 +1,27 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Dashboard from "./pages/Dashboard";
-import Widget from "./pages/Widget";
+
 import DashboardLayout from "./components/DashboardLayout";
+import RequireAuth from "./components/RequireAuth";
+import Dashboard from "./pages/Dashboard";
+import Login from "./pages/Login";
+import Widget from "./pages/Widget";
 
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/widget" element={<Widget />} />
-        <Route path="/" element={
-          <DashboardLayout>
-            <Dashboard />
-          </DashboardLayout>
-        } />
+        <Route path="/login" element={<Login />} />
+        <Route
+          path="/"
+          element={
+            <RequireAuth>
+              <DashboardLayout>
+                <Dashboard />
+              </DashboardLayout>
+            </RequireAuth>
+          }
+        />
       </Routes>
     </Router>
   );
