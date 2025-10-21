@@ -1,7 +1,8 @@
 import { ReactNode, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 
 import { clearSession, getStoredUser } from "../lib/auth";
+import { useTenant } from "../context/TenantContext";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -9,10 +10,12 @@ interface DashboardLayoutProps {
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const navigate = useNavigate();
+  const { refresh } = useTenant();
   const user = useMemo(() => getStoredUser(), []);
 
   const handleSignOut = () => {
     clearSession();
+    void refresh();
     navigate("/login", { replace: true });
   };
 
@@ -20,9 +23,43 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <header className="border-b border-slate-800 bg-slate-900/70 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div>
-            <h1 className="text-2xl font-bold">ShoshChat AI</h1>
-            <p className="text-sm text-slate-400">Multi-tenant AI chat orchestration</p>
+          <div className="flex items-center gap-6">
+            <div>
+              <h1 className="text-2xl font-bold">ShoshChat AI</h1>
+              <p className="text-sm text-slate-400">Multi-tenant AI chat orchestration</p>
+            </div>
+            <nav className="hidden gap-2 text-xs uppercase tracking-wide text-slate-400 md:flex">
+              <NavLink
+                to="/"
+                className={({ isActive }) =>
+                  `rounded-lg px-3 py-1 transition ${
+                    isActive ? "bg-slate-800 text-white" : "text-slate-400 hover:text-white"
+                  }`
+                }
+              >
+                Dashboard
+              </NavLink>
+              <NavLink
+                to="/knowledge"
+                className={({ isActive }) =>
+                  `rounded-lg px-3 py-1 transition ${
+                    isActive ? "bg-slate-800 text-white" : "text-slate-400 hover:text-white"
+                  }`
+                }
+              >
+                Knowledge
+              </NavLink>
+              <NavLink
+                to="/onboarding"
+                className={({ isActive }) =>
+                  `rounded-lg px-3 py-1 transition ${
+                    isActive ? "bg-slate-800 text-white" : "text-slate-400 hover:text-white"
+                  }`
+                }
+              >
+                Onboarding
+              </NavLink>
+            </nav>
           </div>
           <div className="flex items-center gap-4 text-sm text-slate-400">
             {user ? (

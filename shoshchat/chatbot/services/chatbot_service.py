@@ -11,6 +11,7 @@ from django.utils import timezone
 from billing.models import UsageLog
 from chatbot.models import ChatSession
 from compliance.models import AuditLog
+from knowledge.retrieval import retrieve_relevant_chunks
 from nlp.models import LLMConfig
 from nlp.adapters.gradient_adapter import GradientAdapter
 from nlp.adapters.openai_fallback import OpenAIAdapter
@@ -46,11 +47,13 @@ class ChatbotService:
 
     def process_message(self, message: str, user_id: str) -> str:
         adapter = self._get_adapter()
+        context_chunks = retrieve_relevant_chunks(self.tenant, message)
+        enriched_message = self._inject_context(message, context_chunks)
         try:
-            response = adapter.generate(message)
+            response = adapter.generate(enriched_message)
         except Exception:  # pragma: no cover - fallback path
             logger.exception("Falling back to OpenAI adapter")
-            response = OpenAIAdapter().generate(message)
+            response = OpenAIAdapter().generate(enriched_message)
         ChatSession.log_interaction(self.tenant, user_id, message, response)
         now = timezone.now()
         self._log_usage(now)
@@ -58,11 +61,25 @@ class ChatbotService:
         AuditLog.record(self.tenant, user_id, "message.received", response)
         self.logger.log_event(
             user_id=user_id,
-            message=message,
+            message=enriched_message,
             response=response,
             timestamp=now,
         )
         return response
+
+    @staticmethod
+    def _inject_context(message: str, context_chunks) -> str:
+        if not context_chunks:
+            return message
+        context_blocks = []
+        for chunk in context_chunks:
+            context_blocks.append(f"Source: {chunk.source_title}\n{chunk.content}")
+        context_text = "\n\n".join(context_blocks)
+        return (
+            "You are answering with the following business knowledge context. "
+            "Use it to ground your response and cite details when relevant.\n\n"
+            f"Context:\n{context_text}\n\nUser Question: {message}"
+        )
 
 
 __all__ = ["ChatbotService"]

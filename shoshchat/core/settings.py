@@ -23,12 +23,14 @@ SHARED_APPS: Final[list[str]] = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.postgres",
     "rest_framework",
     "rest_framework.authtoken",
     "rest_framework_simplejwt.token_blacklist",
     "accounts",
     "djstripe",
     "tenancy",
+    "knowledge",
 ]
 
 TENANT_APPS: Final[list[str]] = [
@@ -132,6 +134,8 @@ REST_FRAMEWORK: Final[dict[str, object]] = {
         "anon": config("DRF_THROTTLE_ANON", default="100/day"),
         "auth_login": config("DRF_THROTTLE_AUTH_LOGIN", default="10/min"),
         "auth_register": config("DRF_THROTTLE_AUTH_REGISTER", default="5/hour"),
+        "auth_reset": config("DRF_THROTTLE_AUTH_RESET", default="5/hour"),
+        "auth_verify": config("DRF_THROTTLE_AUTH_VERIFY", default="5/hour"),
         "chat": config("DRF_THROTTLE_CHAT", default="120/min"),
     },
 }
@@ -183,3 +187,8 @@ CSRF_TRUSTED_ORIGINS: list[str] = config(
     "DJANGO_CSRF_TRUSTED_ORIGINS", default="", cast=Csv()
 )
 X_FRAME_OPTIONS: Final[str] = "DENY"
+
+EMAIL_BACKEND: Final[str] = config(
+    "DJANGO_EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend"
+)
+DEFAULT_FROM_EMAIL: Final[str] = config("DJANGO_DEFAULT_FROM_EMAIL", default="support@shoshchat.ai")

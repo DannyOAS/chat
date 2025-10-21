@@ -29,6 +29,11 @@ class Tenant(TenantMixin):
     created_at = models.DateTimeField(auto_now_add=True)
     paid_until = models.DateField(null=True, blank=True)
     on_trial = models.BooleanField(default=True)
+    widget_accent = models.CharField(max_length=32, default="retail")
+    widget_welcome_message = models.CharField(
+        max_length=255, default="Hi there! I'm your ShoshChat assistant."
+    )
+    widget_primary_color = models.CharField(max_length=7, default="#14b8a6")
 
     auto_create_schema = True
 

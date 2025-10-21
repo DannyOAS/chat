@@ -88,6 +88,22 @@ const Login = () => {
             {isSubmitting ? "Signing in…" : "Sign in"}
           </button>
         </form>
+        <div className="flex flex-col gap-2 text-xs text-slate-400">
+          <button
+            type="button"
+            onClick={() => navigate("/forgot-password")}
+            className="text-left text-slate-300 hover:text-white"
+          >
+            Forgot password?
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/register")}
+            className="text-left text-slate-300 hover:text-white"
+          >
+            Need an account? Sign up.
+          </button>
+        </div>
       </div>
     </div>
   );

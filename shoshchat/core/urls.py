@@ -12,6 +12,7 @@ urlpatterns = [
     path("api/v1/chat/", include("chatbot.urls")),
     path("api/v1/billing/", include("billing.urls")),
     path("api/v1/tenants/", include("tenancy.urls")),
+    path("api/v1/knowledge/", include("knowledge.api.urls")),
     path("healthz", health, name="healthz"),
     path("readyz", ready, name="readyz"),
 ]

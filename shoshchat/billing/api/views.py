@@ -7,13 +7,14 @@ from typing import Any
 
 import stripe
 from django.conf import settings
+from django.utils import timezone
 from rest_framework import permissions, response, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from billing.models import Subscription, UsageLog
+from billing.models import Plan, Subscription, UsageLog
 from billing.signals import handle_stripe_event
-from .serializers import SubscriptionSerializer, UsageLogSerializer
+from .serializers import PlanSerializer, SubscriptionSerializer, UsageLogSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -83,3 +84,49 @@ class StripeWebhookView(APIView):
 
         logger.info("Stripe webhook processed", extra={"event_type": event_type})
         return response.Response({"received": True}, status=status.HTTP_200_OK)
+
+
+class PlanListView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        plans = Plan.objects.order_by("monthly_price")
+        serializer = PlanSerializer(plans, many=True)
+        return response.Response(serializer.data)
+
+
+class SubscriptionSwitchView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        tenant = getattr(request, "tenant", None)
+        if tenant is None:
+            return response.Response({"detail": "Tenant context missing."}, status=status.HTTP_400_BAD_REQUEST)
+        plan_slug = request.data.get("plan")
+        plan = Plan.objects.filter(slug=plan_slug).first()
+        if not plan:
+            return response.Response(
+                {"detail": "Plan not found."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        subscription, created = Subscription.objects.get_or_create(
+            tenant=tenant,
+            defaults={
+                "plan": plan,
+                "active": True,
+                "current_period_start": timezone.now(),
+                "current_period_end": timezone.now() + timezone.timedelta(days=30),
+            },
+        )
+        if not created:
+            subscription.plan = plan
+            subscription.active = True
+            subscription.current_period_start = timezone.now()
+            subscription.current_period_end = timezone.now() + timezone.timedelta(days=30)
+            subscription.save()
+
+        tenant.on_trial = False
+        tenant.paid_until = subscription.current_period_end.date()
+        tenant.save(update_fields=["on_trial", "paid_until"])
+
+        return response.Response(SubscriptionSerializer(subscription).data)

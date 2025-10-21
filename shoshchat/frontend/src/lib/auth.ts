@@ -58,15 +58,24 @@ export const login = async (username: string, password: string) => {
   return response.data;
 };
 
-export const register = async (payload: {
+interface RegisterPayload {
   username: string;
   email: string;
   password: string;
   password_confirm: string;
   first_name?: string;
   last_name?: string;
-}) => {
-  await axios.post("/api/v1/auth/register/", payload);
+  company_name: string;
+  industry: string;
+  plan?: string;
+  domain?: string;
+  accent?: string;
+  welcome_message?: string;
+  primary_color?: string;
+}
+
+export const register = async (payload: RegisterPayload) => {
+  await axios.post("/api/v1/auth/register/onboard/", payload);
 };
 
 export const refreshSession = async (): Promise<AuthTokens | null> => {

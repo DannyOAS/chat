@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from billing.models import Subscription, UsageLog
+from billing.models import Plan, Subscription, UsageLog
 
 
 class UsageLogSerializer(serializers.ModelSerializer):
@@ -22,4 +22,16 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "active",
             "current_period_start",
             "current_period_end",
+        ]
+
+
+class PlanSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Plan
+        fields = [
+            "slug",
+            "name",
+            "monthly_price",
+            "message_quota",
+            "features",
         ]
