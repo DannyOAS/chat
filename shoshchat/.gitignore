@@ -2,6 +2,10 @@
 __pycache__/
 *.py[cod]
 *.sqlite3
+.venv/
+venv/
+env/
+ENV/
 
 # Django
 /staticfiles/
@@ -24,3 +28,7 @@ frontend/dist/
 
 # Logs
 *.log
+
+# OS
+.DS_Store
+Thumbs.db
