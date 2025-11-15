@@ -199,3 +199,72 @@ def send_verification_email(user, request):
             recipient_list=[user.email],
             fail_silently=True,
         )
+
+
+# Two-Factor Authentication Serializers
+
+
+class TwoFactorSetupSerializer(serializers.Serializer):
+    """Serializer for initiating 2FA setup."""
+
+    pass  # No input needed, just triggers setup
+
+
+class TwoFactorEnableSerializer(serializers.Serializer):
+    """Serializer for enabling 2FA after setup."""
+
+    token = serializers.CharField(min_length=6, max_length=6, help_text="6-digit TOTP code")
+
+
+class TwoFactorDisableSerializer(serializers.Serializer):
+    """Serializer for disabling 2FA."""
+
+    password = serializers.CharField(write_only=True, help_text="User password for verification")
+
+    def validate_password(self, value):
+        user = self.context["request"].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Invalid password.")
+        return value
+
+
+class TwoFactorVerifySerializer(serializers.Serializer):
+    """Serializer for verifying 2FA during login."""
+
+    token = serializers.CharField(
+        min_length=6, max_length=16, help_text="6-digit TOTP code or backup code"
+    )
+
+
+# RBAC Serializers
+
+
+class TenantMembershipSerializer(serializers.Serializer):
+    """Serializer for tenant membership."""
+
+    from accounts.models import Role
+
+    id = serializers.IntegerField(read_only=True)
+    user_id = serializers.IntegerField(source="user.id", read_only=True)
+    username = serializers.CharField(source="user.username", read_only=True)
+    email = serializers.EmailField(source="user.email", read_only=True)
+    role = serializers.ChoiceField(choices=Role.choices)
+    joined_at = serializers.DateTimeField(read_only=True)
+    is_active = serializers.BooleanField(read_only=True)
+
+
+class InviteMemberSerializer(serializers.Serializer):
+    """Serializer for inviting a member to a tenant."""
+
+    from accounts.models import Role
+
+    email = serializers.EmailField()
+    role = serializers.ChoiceField(choices=Role.choices, default=Role.MEMBER)
+
+    def validate_role(self, value):
+        # Prevent creating owners through invite
+        from accounts.models import Role
+
+        if value == Role.OWNER:
+            raise serializers.ValidationError("Cannot invite a user as owner.")
+        return value

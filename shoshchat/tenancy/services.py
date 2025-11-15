@@ -45,6 +45,11 @@ def create_tenant_with_subscription(
         onboarding_completed=True,
     )
 
+    # Create owner membership for RBAC
+    from accounts.models import Role, TenantMembership
+
+    TenantMembership.objects.create(tenant=tenant, user=owner, role=Role.OWNER)
+
     subscription: Subscription | None = None
     if plan:
         now = timezone.now()
