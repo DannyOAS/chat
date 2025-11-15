@@ -28,6 +28,13 @@ class Subscription(models.Model):
     current_period_start = models.DateTimeField(null=True, blank=True)
     current_period_end = models.DateTimeField(null=True, blank=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['tenant', 'active'], name='subscription_tenant_active_idx'),
+            models.Index(fields=['current_period_end'], name='subscription_period_end_idx'),
+            models.Index(fields=['stripe_subscription_id'], name='subscription_stripe_id_idx'),
+        ]
+
     def __str__(self) -> str:  # pragma: no cover - human readable
         return f"{self.tenant} -> {self.plan}"
 
@@ -43,6 +50,10 @@ class UsageLog(models.Model):
 
     class Meta:
         unique_together = ("tenant", "period_start", "period_end")
+        indexes = [
+            models.Index(fields=['tenant', 'period_start', 'period_end'], name='usage_log_tenant_period_idx'),
+            models.Index(fields=['-last_message_at'], name='usage_log_last_message_idx'),
+        ]
 
     def increment(self, amount: int = 1, *, timestamp=None) -> None:
         self.message_count += amount

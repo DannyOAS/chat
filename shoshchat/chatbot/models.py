@@ -18,6 +18,12 @@ class ChatSession(models.Model):
     started_at = models.DateTimeField(auto_now_add=True)
     last_interaction_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['tenant', 'user_id'], name='chat_session_tenant_user_idx'),
+            models.Index(fields=['-last_interaction_at'], name='chat_session_last_interaction_idx'),
+        ]
+
     @classmethod
     def log_interaction(
         cls, tenant: "Tenant", user_id: str, message: str, response: str
@@ -49,6 +55,13 @@ class Message(models.Model):
     response_text = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['session', '-created_at'], name='message_session_created_idx'),
+            models.Index(fields=['-created_at'], name='message_created_idx'),
+        ]
+        ordering = ['-created_at']
+
 
 class Intent(models.Model):
     """Intent classification for retail and finance tenants."""
@@ -57,6 +70,11 @@ class Intent(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     samples = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['tenant', 'name'], name='intent_tenant_name_idx'),
+        ]
 
 
 class Response(models.Model):
