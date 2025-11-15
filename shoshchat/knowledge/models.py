@@ -33,6 +33,10 @@ class KnowledgeSource(models.Model):
 
     class Meta:
         ordering = ("-created_at",)
+        indexes = [
+            models.Index(fields=['tenant', 'status'], name='knowledge_source_status_idx'),
+            models.Index(fields=['-created_at'], name='knowledge_source_created_idx'),
+        ]
 
     def __str__(self) -> str:  # pragma: no cover - human readable
         return f"{self.title} ({self.get_status_display()})"
@@ -46,13 +50,17 @@ class KnowledgeChunk(models.Model):
     sequence = models.PositiveIntegerField()
     content = models.TextField()
     token_count = models.PositiveIntegerField(default=0)
-    embedding = ArrayField(models.FloatField(), size=256, blank=True, default=list)
+    # Updated to 384 dimensions for all-MiniLM-L6-v2
+    embedding = ArrayField(models.FloatField(), size=384, blank=True, default=list)
     embedding_model = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ("source", "sequence")
         unique_together = ("source", "sequence")
+        indexes = [
+            models.Index(fields=['tenant'], name='knowledge_chunk_tenant_idx'),
+        ]
 
     def __str__(self) -> str:  # pragma: no cover - human readable
         return f"Chunk {self.sequence} of {self.source.title}"
