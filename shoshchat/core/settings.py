@@ -157,6 +157,10 @@ CELERY_RESULT_BACKEND: Final[str] = REDIS_URL
 
 AI_PROVIDER: Final[str] = config("AI_PROVIDER", default="gradient")
 DO_GRADIENT_API_KEY: Final[str] = config("DO_GRADIENT_API_KEY", default="")
+DO_GRADIENT_ENDPOINT: Final[str] = config(
+    "DO_GRADIENT_ENDPOINT",
+    default="https://api.gradient.ai/v1/completions"
+)
 
 SIMPLE_JWT: Final[dict[str, object]] = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),

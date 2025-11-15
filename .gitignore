@@ -2,8 +2,11 @@ __pycache__/
 *.py[cod]
 .env
 .env.*
+!.env.example
 *.log
 node_modules/
 shoshchat/frontend/node_modules/
 shoshchat/frontend/dist/
 .DS_Store
+.venv/
+venv/
