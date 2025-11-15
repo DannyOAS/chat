@@ -114,3 +114,214 @@ class EmailVerificationConfirmView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return response.Response({"detail": "Email verified."}, status=status.HTTP_200_OK)
+
+
+# Two-Factor Authentication Views
+
+
+class TwoFactorSetupView(APIView):
+    """Initialize 2FA setup and return QR code data."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        from accounts.two_factor import generate_qr_code, setup_two_factor
+        import base64
+
+        setup_data = setup_two_factor(request.user)
+
+        # Generate QR code image
+        qr_bytes = generate_qr_code(setup_data["qr_uri"])
+        qr_base64 = base64.b64encode(qr_bytes).decode()
+
+        return response.Response(
+            {
+                "secret": setup_data["secret"],
+                "qr_code": f"data:image/png;base64,{qr_base64}",
+                "backup_codes": setup_data["backup_codes"],
+            }
+        )
+
+
+class TwoFactorEnableView(APIView):
+    """Enable 2FA after verifying setup token."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        from accounts.api.serializers import TwoFactorEnableSerializer
+        from accounts.two_factor import enable_two_factor
+
+        serializer = TwoFactorEnableSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        if enable_two_factor(request.user, serializer.validated_data["token"]):
+            return response.Response({"detail": "Two-factor authentication enabled."})
+        else:
+            return response.Response(
+                {"detail": "Invalid verification code."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class TwoFactorDisableView(APIView):
+    """Disable 2FA after password verification."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        from accounts.api.serializers import TwoFactorDisableSerializer
+        from accounts.two_factor import disable_two_factor
+
+        serializer = TwoFactorDisableSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+
+        disable_two_factor(request.user)
+        return response.Response({"detail": "Two-factor authentication disabled."})
+
+
+class TwoFactorStatusView(APIView):
+    """Check 2FA status for the current user."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        profile = request.user.profile
+        return response.Response(
+            {
+                "enabled": profile.two_factor_enabled,
+                "backup_codes_remaining": len(profile.backup_codes) if profile.two_factor_enabled else 0,
+            }
+        )
+
+
+# RBAC Views
+
+
+class TenantMembersView(generics.ListAPIView):
+    """List all members of a tenant."""
+
+    from accounts.api.serializers import TenantMembershipSerializer
+    from accounts.permissions import TenantPermission
+
+    serializer_class = TenantMembershipSerializer
+    permission_classes = [permissions.IsAuthenticated, TenantPermission]
+    required_permission = "manage_members"
+
+    def get_queryset(self):
+        from accounts.models import TenantMembership
+
+        tenant = self.request.tenant  # Set by middleware
+        return TenantMembership.objects.filter(tenant=tenant, is_active=True).select_related("user")
+
+
+class InviteMemberView(APIView):
+    """Invite a new member to the tenant."""
+
+    from accounts.permissions import TenantPermission
+
+    permission_classes = [permissions.IsAuthenticated, TenantPermission]
+    required_permission = "manage_members"
+
+    def post(self, request):
+        from accounts.api.serializers import InviteMemberSerializer
+        from accounts.models import TenantMembership
+
+        serializer = InviteMemberSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data["email"]
+        role = serializer.validated_data["role"]
+        tenant = request.tenant
+
+        # Check if user exists
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return response.Response(
+                {"detail": "User with this email does not exist."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Check if already a member
+        existing = TenantMembership.objects.filter(tenant=tenant, user=user).first()
+        if existing:
+            return response.Response(
+                {"detail": "User is already a member of this tenant."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Create membership
+        membership = TenantMembership.objects.create(
+            tenant=tenant, user=user, role=role, invited_by=request.user
+        )
+
+        return response.Response(
+            TenantMembershipSerializer(membership).data, status=status.HTTP_201_CREATED
+        )
+
+
+class UpdateMemberRoleView(APIView):
+    """Update a member's role."""
+
+    from accounts.permissions import IsOwnerOrAdmin
+
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrAdmin]
+
+    def patch(self, request, membership_id):
+        from accounts.models import Role, TenantMembership
+
+        tenant = request.tenant
+        membership = TenantMembership.objects.filter(id=membership_id, tenant=tenant).first()
+
+        if not membership:
+            return response.Response(
+                {"detail": "Membership not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Prevent changing owner role
+        if membership.role == Role.OWNER:
+            return response.Response(
+                {"detail": "Cannot change owner's role."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        new_role = request.data.get("role")
+        if not new_role or new_role not in dict(Role.choices):
+            return response.Response({"detail": "Invalid role."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Prevent promoting to owner
+        if new_role == Role.OWNER:
+            return response.Response(
+                {"detail": "Cannot promote to owner."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        membership.role = new_role
+        membership.save(update_fields=["role"])
+
+        return response.Response(TenantMembershipSerializer(membership).data)
+
+
+class RemoveMemberView(APIView):
+    """Remove a member from the tenant."""
+
+    from accounts.permissions import IsOwnerOrAdmin
+
+    permission_classes = [permissions.IsAuthenticated, IsOwnerOrAdmin]
+
+    def delete(self, request, membership_id):
+        from accounts.models import Role, TenantMembership
+
+        tenant = request.tenant
+        membership = TenantMembership.objects.filter(id=membership_id, tenant=tenant).first()
+
+        if not membership:
+            return response.Response(
+                {"detail": "Membership not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Prevent removing owner
+        if membership.role == Role.OWNER:
+            return response.Response(
+                {"detail": "Cannot remove owner."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        membership.is_active = False
+        membership.save(update_fields=["is_active"])
+
+        return response.Response({"detail": "Member removed."}, status=status.HTTP_204_NO_CONTENT)
