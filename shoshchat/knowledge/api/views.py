@@ -1,4 +1,4 @@
-"""API views for tenant knowledge management."""
+"""API views for business knowledge management."""
 from __future__ import annotations
 
 from django.db.models import Count
@@ -18,9 +18,12 @@ class KnowledgeSourceListCreateView(generics.ListCreateAPIView):
     serializer_class = KnowledgeSourceSerializer
 
     def get_queryset(self):
-        tenant = getattr(self.request, "tenant", None)
+        # Changed from request.tenant to request.business (Phase 3: Single-domain)
+        business = getattr(self.request, "business", None)
+        if not business:
+            return KnowledgeSource.objects.none()
         return (
-            KnowledgeSource.objects.filter(tenant=tenant)
+            KnowledgeSource.objects.filter(business=business)
             .annotate(chunk_count=Count("chunks"))
             .order_by("-created_at")
         )
@@ -31,8 +34,11 @@ class KnowledgeSourceListCreateView(generics.ListCreateAPIView):
         return super().get_serializer_class()
 
     def perform_create(self, serializer):
-        tenant = getattr(self.request, "tenant", None)
-        source = serializer.save(tenant=tenant, status=KnowledgeSource.Status.PENDING)
+        # Changed from request.tenant to request.business (Phase 3: Single-domain)
+        business = getattr(self.request, "business", None)
+        if not business:
+            raise ValueError("Business context is required.")
+        source = serializer.save(business=business, status=KnowledgeSource.Status.PENDING)
         process_knowledge_source.delay(source.pk)
 
     def create(self, request, *args, **kwargs):
@@ -47,8 +53,11 @@ class KnowledgeSourceDetailView(generics.RetrieveAPIView):
     serializer_class = KnowledgeSourceSerializer
 
     def get_queryset(self):
-        tenant = getattr(self.request, "tenant", None)
-        return KnowledgeSource.objects.filter(tenant=tenant).annotate(chunk_count=Count("chunks"))
+        # Changed from request.tenant to request.business (Phase 3: Single-domain)
+        business = getattr(self.request, "business", None)
+        if not business:
+            return KnowledgeSource.objects.none()
+        return KnowledgeSource.objects.filter(business=business).annotate(chunk_count=Count("chunks"))
 
 
 class KnowledgeChunkListView(generics.ListAPIView):
@@ -56,9 +65,12 @@ class KnowledgeChunkListView(generics.ListAPIView):
     serializer_class = KnowledgeChunkSerializer
 
     def get_queryset(self):
-        tenant = getattr(self.request, "tenant", None)
+        # Changed from request.tenant to request.business (Phase 3: Single-domain)
+        business = getattr(self.request, "business", None)
+        if not business:
+            return KnowledgeChunk.objects.none()
         source_id = self.kwargs.get("source_id")
-        queryset = KnowledgeChunk.objects.filter(tenant=tenant)
+        queryset = KnowledgeChunk.objects.filter(business=business)
         if source_id:
             queryset = queryset.filter(source_id=source_id)
         return queryset.order_by("sequence")

@@ -1,7 +1,12 @@
 """Billing and subscription models."""
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from django.db import models
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from business.models import Business
 
 
 class Plan(models.Model):
@@ -23,9 +28,10 @@ class Plan(models.Model):
 
 
 class Subscription(models.Model):
-    """Stores active subscription information for a tenant."""
+    """Stores active subscription information for a business."""
 
-    tenant = models.ForeignKey("tenancy.Tenant", on_delete=models.CASCADE)
+    tenant = models.ForeignKey("tenancy.Tenant", on_delete=models.CASCADE, null=True, blank=True)  # Legacy, will be removed
+    business = models.ForeignKey("business.Business", on_delete=models.CASCADE, null=True, blank=True)  # New single-domain
     plan = models.ForeignKey(Plan, on_delete=models.PROTECT)
     stripe_subscription_id = models.CharField(max_length=255, blank=True)
     active = models.BooleanField(default=True)
@@ -46,7 +52,8 @@ class Subscription(models.Model):
 class UsageLog(models.Model):
     """Tracks chat message usage for quota enforcement."""
 
-    tenant = models.ForeignKey("tenancy.Tenant", on_delete=models.CASCADE)
+    tenant = models.ForeignKey("tenancy.Tenant", on_delete=models.CASCADE, null=True, blank=True)  # Legacy, will be removed
+    business = models.ForeignKey("business.Business", on_delete=models.CASCADE, null=True, blank=True)  # New single-domain
     message_count = models.PositiveIntegerField(default=0)
     period_start = models.DateTimeField()
     period_end = models.DateTimeField()

@@ -57,9 +57,10 @@ urlpatterns = [
     path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
     # API Endpoints
     path("api/v1/auth/", include("accounts.api.urls")),
+    path("api/v1/business/", include("business.api.urls")),  # Single-domain business API
     path("api/v1/chat/", include("chatbot.urls")),
     path("api/v1/billing/", include("billing.urls")),
-    path("api/v1/tenants/", include("tenancy.urls")),
+    path("api/v1/tenants/", include("tenancy.urls")),  # Legacy - will be removed in Phase 4
     path("api/v1/knowledge/", include("knowledge.api.urls")),
     # Health Checks
     path("healthz", health, name="healthz"),

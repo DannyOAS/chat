@@ -23,9 +23,12 @@ class UsageSummaryView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        tenant = getattr(request, "tenant", None)
+        # Changed from request.tenant to request.business (Phase 3: Single-domain)
+        business = getattr(request, "business", None)
+        if not business:
+            return Response({})
         usage = (
-            UsageLog.objects.filter(tenant=tenant).order_by("-period_end").first()
+            UsageLog.objects.filter(business=business).order_by("-period_end").first()
         )
         if not usage:
             return Response({})
@@ -37,8 +40,11 @@ class ActiveSubscriptionView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        tenant = getattr(request, "tenant", None)
-        subscription = Subscription.objects.filter(tenant=tenant, active=True).first()
+        # Changed from request.tenant to request.business (Phase 3: Single-domain)
+        business = getattr(request, "business", None)
+        if not business:
+            return Response({})
+        subscription = Subscription.objects.filter(business=business, active=True).first()
         if not subscription:
             return Response({})
         serializer = SubscriptionSerializer(subscription)
@@ -126,9 +132,10 @@ class SubscriptionSwitchView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        tenant = getattr(request, "tenant", None)
-        if tenant is None:
-            return response.Response({"detail": "Tenant context missing."}, status=status.HTTP_400_BAD_REQUEST)
+        # Changed from request.tenant to request.business (Phase 3: Single-domain)
+        business = getattr(request, "business", None)
+        if business is None:
+            return response.Response({"detail": "Business context missing."}, status=status.HTTP_400_BAD_REQUEST)
         plan_slug = request.data.get("plan")
         plan = Plan.objects.filter(slug=plan_slug).first()
         if not plan:
@@ -137,7 +144,7 @@ class SubscriptionSwitchView(APIView):
             )
 
         subscription, created = Subscription.objects.get_or_create(
-            tenant=tenant,
+            business=business,
             defaults={
                 "plan": plan,
                 "active": True,
@@ -152,8 +159,8 @@ class SubscriptionSwitchView(APIView):
             subscription.current_period_end = timezone.now() + timezone.timedelta(days=30)
             subscription.save()
 
-        tenant.on_trial = False
-        tenant.paid_until = subscription.current_period_end.date()
-        tenant.save(update_fields=["on_trial", "paid_until"])
+        business.on_trial = False
+        business.paid_until = subscription.current_period_end.date()
+        business.save(update_fields=["on_trial", "paid_until"])
 
         return response.Response(SubscriptionSerializer(subscription).data)

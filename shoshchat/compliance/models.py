@@ -2,14 +2,19 @@
 from __future__ import annotations
 
 import hashlib
+from typing import TYPE_CHECKING
 
 from django.db import models
 
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from business.models import Business
+
 
 class AuditLog(models.Model):
-    """Tenant scoped audit entries with hashed content."""
+    """Business scoped audit entries with hashed content."""
 
-    tenant = models.ForeignKey("tenancy.Tenant", on_delete=models.CASCADE)
+    tenant = models.ForeignKey("tenancy.Tenant", on_delete=models.CASCADE, null=True, blank=True)  # Legacy, will be removed
+    business = models.ForeignKey("business.Business", on_delete=models.CASCADE, null=True, blank=True)  # New single-domain
     user = models.ForeignKey("accounts.User", on_delete=models.SET_NULL, null=True, blank=True)
     user_id_hash = models.CharField(max_length=128)
     action = models.CharField(max_length=100)  # e.g., "user.login", "knowledge.upload"
@@ -44,7 +49,8 @@ class AuditLog(models.Model):
 class Consent(models.Model):
     """Tracks user consent records for data usage."""
 
-    tenant = models.ForeignKey("tenancy.Tenant", on_delete=models.CASCADE)
+    tenant = models.ForeignKey("tenancy.Tenant", on_delete=models.CASCADE, null=True, blank=True)  # Legacy, will be removed
+    business = models.ForeignKey("business.Business", on_delete=models.CASCADE, null=True, blank=True)  # New single-domain
     user_id_hash = models.CharField(max_length=128)
     granted = models.BooleanField(default=True)
     granted_at = models.DateTimeField(auto_now_add=True)

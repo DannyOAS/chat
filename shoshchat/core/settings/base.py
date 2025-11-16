@@ -15,9 +15,9 @@ ALLOWED_HOSTS: list[str] = config(
     "DJANGO_ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv()
 )
 
-SHARED_APPS: Final[list[str]] = [
-    "django_tenants",
-    "corsheaders",
+# Single-domain architecture - no more SHARED_APPS/TENANT_APPS split
+INSTALLED_APPS: Final[list[str]] = [
+    # Django core apps
     "django.contrib.contenttypes",
     "django.contrib.auth",
     "django.contrib.admin",
@@ -25,49 +25,40 @@ SHARED_APPS: Final[list[str]] = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.postgres",
+    # Third-party apps
     "rest_framework",
     "rest_framework.authtoken",
     "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
-    "accounts",
     "djstripe",
-    "tenancy",
-    "knowledge",
-]
-
-TENANT_APPS: Final[list[str]] = [
-    "django.contrib.contenttypes",
-    "django.contrib.auth",
-    "django.contrib.sessions",
-    "django.contrib.messages",
-    "django.contrib.staticfiles",
+    # ShoshChat apps
+    "accounts",
+    "business",  # Single-domain business management
+    "tenancy",  # Legacy - kept temporarily for data migration
     "chatbot",
+    "knowledge",
     "billing",
     "compliance",
     "nlp",
 ]
 
-INSTALLED_APPS: list[str] = list(dict.fromkeys(SHARED_APPS + TENANT_APPS))
-
-TENANT_MODEL: Final[str] = "tenancy.Tenant"
-TENANT_DOMAIN_MODEL: Final[str] = "tenancy.Domain"
+# Removed TENANT_MODEL and TENANT_DOMAIN_MODEL (Phase 2: Single-domain architecture)
 
 MIDDLEWARE: list[str] = [
-    "django_tenants.middleware.main.TenantMainMiddleware",
+    # Removed TenantMainMiddleware (Phase 2: Single-domain architecture)
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "business.middleware.BusinessMiddleware",  # Single-domain business context
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "compliance.middleware.AuditMiddleware",
 ]
 
 ROOT_URLCONF: Final[str] = "core.urls"
-PUBLIC_SCHEMA_URLCONF: Final[str] = "core.urls"
+# Removed PUBLIC_SCHEMA_URLCONF (Phase 2: No more schema routing)
 
 TEMPLATES = [
     {
@@ -87,16 +78,23 @@ TEMPLATES = [
 
 DATABASES: dict[str, dict[str, str]] = {
     "default": {
-        "ENGINE": "django_tenants.postgresql_backend",
+        # Changed from django_tenants.postgresql_backend to standard PostgreSQL (Phase 2)
+        "ENGINE": "django.db.backends.postgresql",
         "NAME": config("POSTGRES_DB", default="shoshchat"),
         "USER": config("POSTGRES_USER", default="shoshchat"),
         "PASSWORD": config("POSTGRES_PASSWORD", default="shoshchat"),
         "HOST": config("POSTGRES_HOST", default="db"),
         "PORT": config("POSTGRES_PORT", default="5432"),
+        # Connection pooling and performance settings
+        "CONN_MAX_AGE": 600,  # Persistent connections (10 minutes)
+        "ATOMIC_REQUESTS": True,  # Wrap each request in a transaction
+        "OPTIONS": {
+            "connect_timeout": 10,
+        },
     }
 }
 
-DATABASE_ROUTERS: Final[list[str]] = ["django_tenants.routers.TenantSyncRouter"]
+# Removed DATABASE_ROUTERS (Phase 2: No more tenant schema routing)
 
 AUTH_PASSWORD_VALIDATORS: list[dict[str, str]] = [
     {
@@ -112,14 +110,10 @@ TIME_ZONE: Final[str] = "UTC"
 USE_I18N: Final[bool] = True
 USE_TZ: Final[bool] = True
 
-STATIC_URL: Final[str] = "/static/"
+STATIC_URL: Final[str] = "static/"
 STATIC_ROOT: Final[Path] = BASE_DIR / "staticfiles"
-MEDIA_URL: Final[str] = "/media/"
+MEDIA_URL: Final[str] = "media/"
 MEDIA_ROOT: Final[Path] = BASE_DIR / "media"
-
-# Whitenoise settings - disable compression for debugging
-STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
-WHITENOISE_USE_FINDERS = True
 
 DEFAULT_AUTO_FIELD: Final[str] = "django.db.models.BigAutoField"
 
@@ -228,19 +222,6 @@ SECURE_REFERRER_POLICY: Final[str] = config("DJANGO_SECURE_REFERRER_POLICY", def
 CSRF_TRUSTED_ORIGINS: list[str] = config(
     "DJANGO_CSRF_TRUSTED_ORIGINS", default="", cast=Csv()
 )
-
-# CORS Configuration
-CORS_ALLOWED_ORIGINS = [
-    "http://138.197.155.4",
-    "https://138.197.155.4",
-]
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_ALL_ORIGINS = False
-
-# CSRF Configuration  
-CSRF_COOKIE_HTTPONLY = False
-CSRF_USE_SESSIONS = False
-CSRF_COOKIE_SAMESITE = 'Lax'
 X_FRAME_OPTIONS: Final[str] = "DENY"
 
 # Email Configuration

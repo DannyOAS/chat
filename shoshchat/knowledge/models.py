@@ -1,12 +1,17 @@
-"""Models supporting tenant knowledge ingestion and retrieval."""
+"""Models supporting business knowledge ingestion and retrieval."""
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
 
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from business.models import Business
+
 
 class KnowledgeSource(models.Model):
-    """Represents a knowledge artifact uploaded or linked by a tenant."""
+    """Represents a knowledge artifact uploaded or linked by a business."""
 
     class SourceType(models.TextChoices):
         FILE = "file", "File Upload"
@@ -19,7 +24,8 @@ class KnowledgeSource(models.Model):
         READY = "ready", "Ready"
         FAILED = "failed", "Failed"
 
-    tenant = models.ForeignKey("tenancy.Tenant", related_name="knowledge_sources", on_delete=models.CASCADE)
+    tenant = models.ForeignKey("tenancy.Tenant", related_name="knowledge_sources", on_delete=models.CASCADE, null=True, blank=True)  # Legacy, will be removed
+    business = models.ForeignKey("business.Business", related_name="knowledge_sources", on_delete=models.CASCADE, null=True, blank=True)  # New single-domain
     title = models.CharField(max_length=255)
     source_type = models.CharField(max_length=16, choices=SourceType.choices)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
@@ -46,7 +52,8 @@ class KnowledgeChunk(models.Model):
     """Chunk of processed text with vector embedding."""
 
     source = models.ForeignKey(KnowledgeSource, related_name="chunks", on_delete=models.CASCADE)
-    tenant = models.ForeignKey("tenancy.Tenant", related_name="knowledge_chunks", on_delete=models.CASCADE)
+    tenant = models.ForeignKey("tenancy.Tenant", related_name="knowledge_chunks", on_delete=models.CASCADE, null=True, blank=True)  # Legacy, will be removed
+    business = models.ForeignKey("business.Business", related_name="knowledge_chunks", on_delete=models.CASCADE, null=True, blank=True)  # New single-domain
     sequence = models.PositiveIntegerField()
     content = models.TextField()
     token_count = models.PositiveIntegerField(default=0)
