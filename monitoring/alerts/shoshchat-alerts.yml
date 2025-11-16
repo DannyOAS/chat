@@ -1,0 +1,203 @@
+# ShoshChat AI - Prometheus Alert Rules
+
+groups:
+  - name: shoshchat_application
+    interval: 30s
+    rules:
+      # High error rate
+      - alert: HighErrorRate
+        expr: |
+          rate(django_http_responses_total_by_status_total{status=~"5.."}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          service: shoshchat-api
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+      # High response time
+      - alert: HighResponseTime
+        expr: |
+          histogram_quantile(0.95, rate(django_http_requests_latency_seconds_bucket[5m])) > 1.0
+        for: 5m
+        labels:
+          severity: warning
+          service: shoshchat-api
+        annotations:
+          summary: "High API response time"
+          description: "95th percentile response time is {{ $value }}s (threshold: 1s)"
+
+      # Service down
+      - alert: ServiceDown
+        expr: up{job="django"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: shoshchat-api
+        annotations:
+          summary: "ShoshChat API is down"
+          description: "The ShoshChat API service has been down for more than 2 minutes"
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.90
+        for: 5m
+        labels:
+          severity: warning
+          service: infrastructure
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }} (threshold: 90%)"
+
+      # High CPU usage
+      - alert: HighCPUUsage
+        expr: |
+          100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+          service: infrastructure
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value | humanizePercentage }} (threshold: 80%)"
+
+  - name: shoshchat_database
+    interval: 30s
+    rules:
+      # Database down
+      - alert: PostgreSQLDown
+        expr: up{job="postgres"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL database has been down for more than 2 minutes"
+
+      # Too many connections
+      - alert: PostgreSQLTooManyConnections
+        expr: |
+          sum(pg_stat_activity_count) > (pg_settings_max_connections * 0.8)
+        for: 5m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "PostgreSQL has too many connections"
+          description: "{{ $value }} connections (threshold: 80% of max_connections)"
+
+      # Slow queries
+      - alert: PostgreSQLSlowQueries
+        expr: |
+          rate(pg_stat_activity_max_tx_duration{datname!="postgres"}[5m]) > 60
+        for: 5m
+        labels:
+          severity: warning
+          service: database
+        annotations:
+          summary: "PostgreSQL slow queries detected"
+          description: "Query duration exceeds 60 seconds"
+
+  - name: shoshchat_cache
+    interval: 30s
+    rules:
+      # Redis down
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: cache
+        annotations:
+          summary: "Redis is down"
+          description: "Redis cache has been down for more than 2 minutes"
+
+      # High memory usage
+      - alert: RedisHighMemoryUsage
+        expr: |
+          (redis_memory_used_bytes / redis_memory_max_bytes) > 0.90
+        for: 5m
+        labels:
+          severity: warning
+          service: cache
+        annotations:
+          summary: "Redis high memory usage"
+          description: "Redis memory usage is {{ $value | humanizePercentage }} (threshold: 90%)"
+
+      # Too many connections
+      - alert: RedisTooManyConnections
+        expr: redis_connected_clients > 100
+        for: 5m
+        labels:
+          severity: warning
+          service: cache
+        annotations:
+          summary: "Redis has too many connections"
+          description: "{{ $value }} connected clients (threshold: 100)"
+
+  - name: shoshchat_celery
+    interval: 30s
+    rules:
+      # No active workers
+      - alert: CeleryNoWorkers
+        expr: celery_workers_active == 0
+        for: 5m
+        labels:
+          severity: critical
+          service: celery
+        annotations:
+          summary: "No active Celery workers"
+          description: "All Celery workers are down"
+
+      # High queue length
+      - alert: CeleryHighQueueLength
+        expr: celery_queue_length > 1000
+        for: 10m
+        labels:
+          severity: warning
+          service: celery
+        annotations:
+          summary: "Celery queue is growing"
+          description: "{{ $value }} tasks in queue (threshold: 1000)"
+
+      # Task failures
+      - alert: CeleryHighTaskFailureRate
+        expr: |
+          rate(celery_task_failed_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: celery
+        annotations:
+          summary: "High Celery task failure rate"
+          description: "Task failure rate is {{ $value | humanizePercentage }} (threshold: 10%)"
+
+  - name: shoshchat_business_metrics
+    interval: 1m
+    rules:
+      # Low user signups
+      - alert: LowUserSignups
+        expr: |
+          rate(django_model_inserts_total{model="User"}[1h]) < 0.01
+        for: 2h
+        labels:
+          severity: info
+          service: business
+        annotations:
+          summary: "Low user signup rate"
+          description: "Less than 1 signup per hour in the last 2 hours"
+
+      # High API usage (potential abuse)
+      - alert: HighAPIUsagePerUser
+        expr: |
+          topk(5, rate(django_http_requests_total_by_method_total{method="POST"}[5m])) > 100
+        for: 10m
+        labels:
+          severity: warning
+          service: security
+        annotations:
+          summary: "Potential API abuse detected"
+          description: "High request rate from user: {{ $value }} req/s"

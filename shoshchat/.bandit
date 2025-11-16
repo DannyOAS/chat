@@ -1,0 +1,31 @@
+[bandit]
+# Bandit security linter configuration
+exclude_dirs =
+    /tests/,
+    /migrations/,
+    /venv/,
+    /env/,
+    /.venv/,
+    /node_modules/,
+    /staticfiles/,
+    /media/
+
+# Tests to skip
+skips =
+    # B101: Test for use of assert (used in tests and development)
+    B101,
+    # B601: Shell injection via Paramiko (not using Paramiko)
+    B601
+
+# Tests to run (default: all except skips)
+# Specify levels: HIGH, MEDIUM, LOW
+severity = MEDIUM
+
+# Confidence levels: HIGH, MEDIUM, LOW
+confidence = MEDIUM
+
+# Output format: csv, custom, html, json, screen, txt, xml, yaml
+format = json
+
+# Maximum number of issues to report
+max_issues = 100
