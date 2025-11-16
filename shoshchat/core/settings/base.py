@@ -31,6 +31,7 @@ SHARED_APPS: Final[list[str]] = [
     "accounts",
     "djstripe",
     "tenancy",
+    "business",  # New single-domain business app
     "knowledge",
 ]
 
@@ -52,12 +53,13 @@ TENANT_MODEL: Final[str] = "tenancy.Tenant"
 TENANT_DOMAIN_MODEL: Final[str] = "tenancy.Domain"
 
 MIDDLEWARE: list[str] = [
-    "django_tenants.middleware.main.TenantMainMiddleware",
+    "django_tenants.middleware.main.TenantMainMiddleware",  # Will be removed in Phase 2
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "business.middleware.BusinessMiddleware",  # New single-domain business context
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "compliance.middleware.AuditMiddleware",

@@ -8,13 +8,15 @@ from django.utils import timezone
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from tenancy.models import Tenant
+    from business.models import Business
 
 
 class ChatSession(models.Model):
     """Represents a chat session between a user and the chatbot."""
 
     user_id = models.CharField(max_length=255)
-    tenant = models.ForeignKey("tenancy.Tenant", on_delete=models.CASCADE)
+    tenant = models.ForeignKey("tenancy.Tenant", on_delete=models.CASCADE, null=True, blank=True)  # Legacy, will be removed
+    business = models.ForeignKey("business.Business", on_delete=models.CASCADE, null=True, blank=True)  # New single-domain
     started_at = models.DateTimeField(auto_now_add=True)
     last_interaction_at = models.DateTimeField(auto_now=True)
 
@@ -64,9 +66,10 @@ class Message(models.Model):
 
 
 class Intent(models.Model):
-    """Intent classification for retail and finance tenants."""
+    """Intent classification for retail and finance businesses."""
 
-    tenant = models.ForeignKey("tenancy.Tenant", on_delete=models.CASCADE)
+    tenant = models.ForeignKey("tenancy.Tenant", on_delete=models.CASCADE, null=True, blank=True)  # Legacy, will be removed
+    business = models.ForeignKey("business.Business", on_delete=models.CASCADE, null=True, blank=True)  # New single-domain
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     samples = models.JSONField(default=list, blank=True)
