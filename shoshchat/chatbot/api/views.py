@@ -20,12 +20,13 @@ class ChatMessageView(APIView):
     def post(self, request, *args, **kwargs):
         serializer = ChatRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        tenant = getattr(request, "tenant", None)
+        # Changed from request.tenant to request.business (Phase 3: Single-domain)
+        business = getattr(request, "business", None)
         try:
-            service = ChatbotService(tenant)
+            service = ChatbotService(business)
         except ImproperlyConfigured:
             return response.Response(
-                {"detail": "Tenant context is required."},
+                {"detail": "Business context is required."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         data = serializer.validated_data
@@ -38,25 +39,35 @@ class ChatSessionListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        tenant = getattr(self.request, "tenant", None)
-        return ChatSession.objects.filter(tenant=tenant).order_by("-last_interaction_at")
+        # Changed from request.tenant to request.business (Phase 3: Single-domain)
+        business = getattr(self.request, "business", None)
+        if not business:
+            return ChatSession.objects.none()
+        return ChatSession.objects.filter(business=business).order_by("-last_interaction_at")
 
 
 class ChatAnalyticsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        tenant = getattr(request, "tenant", None)
-        total_sessions = ChatSession.objects.filter(tenant=tenant).count()
-        total_messages = Message.objects.filter(session__tenant=tenant).count()
+        # Changed from request.tenant to request.business (Phase 3: Single-domain)
+        business = getattr(request, "business", None)
+        if not business:
+            return response.Response(
+                {"detail": "Business context is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        total_sessions = ChatSession.objects.filter(business=business).count()
+        total_messages = Message.objects.filter(session__business=business).count()
         last_messages = (
-            Message.objects.filter(session__tenant=tenant)
+            Message.objects.filter(session__business=business)
             .values("role")
             .annotate(total=Count("id"))
         )
         role_breakdown = {entry["role"]: entry["total"] for entry in last_messages}
         recent_sessions = (
-            ChatSession.objects.filter(tenant=tenant)
+            ChatSession.objects.filter(business=business)
             .values("user_id", "last_interaction_at")
             .order_by("-last_interaction_at")[:5]
         )
