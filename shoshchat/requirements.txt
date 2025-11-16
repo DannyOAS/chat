@@ -12,6 +12,7 @@ dj-stripe>=2.8
 celery>=5.3
 redis>=5.0
 gunicorn>=21.2
+whitenoise>=6.0
 
 # Phase 1: Vector embeddings & pgvector
 pgvector>=0.2.0

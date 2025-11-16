@@ -14,6 +14,10 @@ class Plan(models.Model):
     message_quota = models.PositiveIntegerField(default=0)
     features = models.JSONField(default=list, blank=True)
 
+    class Meta:
+        # This model should be in the public schema for registration
+        pass
+
     def __str__(self) -> str:  # pragma: no cover - human readable
         return self.name
 

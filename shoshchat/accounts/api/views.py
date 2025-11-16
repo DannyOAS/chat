@@ -325,3 +325,35 @@ class RemoveMemberView(APIView):
         membership.save(update_fields=["is_active"])
 
         return response.Response({"detail": "Member removed."}, status=status.HTTP_204_NO_CONTENT)
+
+
+class PublicPlansView(APIView):
+    """Public billing plans for registration - no tenant context needed"""
+    permission_classes = [permissions.AllowAny]
+    
+    def get(self, request, *args, **kwargs):
+        plans = [
+            {
+                "slug": "starter", 
+                "name": "Starter Plan", 
+                "monthly_price": "19.99", 
+                "message_quota": 1000, 
+                "features": ["Basic AI", "Email Support"]
+            },
+            {
+                "slug": "pro", 
+                "name": "Professional Plan", 
+                "monthly_price": "49.99", 
+                "message_quota": 5000, 
+                "features": ["Advanced AI", "Priority Support"]
+            },
+            {
+                "slug": "enterprise", 
+                "name": "Enterprise Plan", 
+                "monthly_price": "99.99", 
+                "message_quota": 15000, 
+                "features": ["Premium AI", "24/7 Support"]
+            }
+        ]
+        return response.Response(plans)
+

@@ -1,22 +1,23 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { FormEvent, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 
-import api from "../lib/api";
-import { login, register as registerUser } from "../lib/auth";
+import { useRegister } from "../hooks/useAuth";
+import { usePlans } from "../hooks/usePlans";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
-interface Plan {
-  slug: string;
-  name: string;
-  monthly_price: string;
-  message_quota: number;
-  features: string[];
-}
 
 const defaultWelcome = "Hi there! I'm excited to help you today.";
 
 const Register = () => {
-  const navigate = useNavigate();
-  const [plans, setPlans] = useState<Plan[]>([]);
+  const { data: plans = [], isLoading: plansLoading } = usePlans();
+  const registerMutation = useRegister();
   const [selectedPlan, setSelectedPlan] = useState<string>("");
   const [form, setForm] = useState({
     company_name: "",
@@ -32,23 +33,13 @@ const Register = () => {
     password: "",
     password_confirm: "",
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchPlans = async () => {
-      try {
-        const response = await api.get<Plan[]>("/billing/plans/");
-        setPlans(response.data);
-        if (response.data.length > 0) {
-          setSelectedPlan(response.data[0].slug);
-        }
-      } catch (err) {
-        console.error("Failed to load plans", err);
-      }
-    };
-    void fetchPlans();
-  }, []);
+  // Set default plan when plans are loaded
+  useMemo(() => {
+    if (plans.length > 0 && !selectedPlan) {
+      setSelectedPlan(plans[0].slug);
+    }
+  }, [plans, selectedPlan]);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = event.target;
@@ -57,210 +48,200 @@ const Register = () => {
 
   const selectedPlanDetails = useMemo(() => plans.find((plan) => plan.slug === selectedPlan), [plans, selectedPlan]);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setIsSubmitting(true);
-    setError(null);
-    try {
-      await registerUser({
-        username: form.username,
-        email: form.email,
-        password: form.password,
-        password_confirm: form.password_confirm,
-        first_name: form.first_name,
-        last_name: form.last_name,
-        company_name: form.company_name,
-        industry: form.industry,
-        plan: selectedPlan,
-        domain: form.domain,
-        accent: form.accent,
-        welcome_message: form.welcome_message,
-        primary_color: form.primary_color,
-      });
-      await login(form.username, form.password);
-      navigate("/onboarding", { replace: true });
-    } catch (err: any) {
-      console.error(err);
-      setError(err.response?.data?.detail ?? "Unable to complete registration");
-    } finally {
-      setIsSubmitting(false);
-    }
+    registerMutation.mutate({
+      ...form,
+      plan: selectedPlan,
+    });
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
+    <div className="min-h-screen bg-background px-6 py-10 text-foreground">
+      <div className="absolute right-4 top-4">
+        <ThemeToggle />
+      </div>
       <div className="mx-auto flex max-w-5xl flex-col gap-10 lg:flex-row">
-        <div className="w-full max-w-md space-y-6 rounded-3xl border border-slate-800 bg-slate-900/60 p-8 shadow-2xl">
+        <Card className="w-full max-w-md space-y-6 p-8">
           <div>
             <h1 className="text-3xl font-semibold">Create your ShoshChat account</h1>
             <p className="mt-2 text-sm text-slate-400">Start chatting with your customers in minutes.</p>
           </div>
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-2">
-              <label className="text-xs uppercase tracking-wide text-slate-400">Company Name</label>
-              <input
+              <Label htmlFor="company_name">Company Name</Label>
+              <Input
+                id="company_name"
                 name="company_name"
                 value={form.company_name}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
               />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-xs uppercase tracking-wide text-slate-400">Industry</label>
-                <select
-                  name="industry"
-                  value={form.industry}
-                  onChange={handleChange}
-                  className="w-full rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                >
-                  <option value="retail">Retail / E-commerce</option>
-                  <option value="finance">Finance / Insurance</option>
-                </select>
+                <Label htmlFor="industry">Industry</Label>
+                <Select value={form.industry} onValueChange={(value) => setForm((prev) => ({ ...prev, industry: value }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="retail">Retail / E-commerce</SelectItem>
+                    <SelectItem value="finance">Finance / Insurance</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-xs uppercase tracking-wide text-slate-400">Domain (optional)</label>
-                <input
+                <Label htmlFor="domain">Domain (optional)</Label>
+                <Input
+                  id="domain"
                   name="domain"
                   value={form.domain}
                   onChange={handleChange}
                   placeholder="chat.yourdomain.com"
-                  className="w-full rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
                 />
               </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-xs uppercase tracking-wide text-slate-400">First Name</label>
-                <input
+                <Label htmlFor="first_name">First Name</Label>
+                <Input
+                  id="first_name"
                   name="first_name"
                   value={form.first_name}
                   onChange={handleChange}
                   required
-                  className="w-full rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs uppercase tracking-wide text-slate-400">Last Name</label>
-                <input
+                <Label htmlFor="last_name">Last Name</Label>
+                <Input
+                  id="last_name"
                   name="last_name"
                   value={form.last_name}
                   onChange={handleChange}
                   required
-                  className="w-full rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs uppercase tracking-wide text-slate-400">Business Email</label>
-              <input
+              <Label htmlFor="email">Business Email</Label>
+              <Input
+                id="email"
                 name="email"
                 type="email"
                 value={form.email}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs uppercase tracking-wide text-slate-400">Username</label>
-              <input
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
                 name="username"
                 value={form.username}
                 onChange={handleChange}
                 required
-                className="w-full rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
               />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-xs uppercase tracking-wide text-slate-400">Password</label>
-                <input
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
                   name="password"
                   type="password"
                   value={form.password}
                   onChange={handleChange}
                   required
-                  className="w-full rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs uppercase tracking-wide text-slate-400">Confirm Password</label>
-                <input
+                <Label htmlFor="password_confirm">Confirm Password</Label>
+                <Input
+                  id="password_confirm"
                   name="password_confirm"
                   type="password"
                   value={form.password_confirm}
                   onChange={handleChange}
                   required
-                  className="w-full rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs uppercase tracking-wide text-slate-400">Welcome Message</label>
-              <textarea
+              <Label htmlFor="welcome_message">Welcome Message</Label>
+              <Textarea
+                id="welcome_message"
                 name="welcome_message"
                 value={form.welcome_message}
                 onChange={handleChange}
                 rows={3}
-                className="w-full rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
               />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-xs uppercase tracking-wide text-slate-400">Widget Accent</label>
-                <select
-                  name="accent"
-                  value={form.accent}
-                  onChange={handleChange}
-                  className="w-full rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                >
-                  <option value="retail">Retail</option>
-                  <option value="finance">Finance</option>
-                </select>
+                <Label htmlFor="accent">Widget Accent</Label>
+                <Select value={form.accent} onValueChange={(value) => setForm((prev) => ({ ...prev, accent: value }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="retail">Retail</SelectItem>
+                    <SelectItem value="finance">Finance</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-xs uppercase tracking-wide text-slate-400">Primary Color</label>
-                <input
+                <Label htmlFor="primary_color">Primary Color</Label>
+                <Input
+                  id="primary_color"
                   name="primary_color"
                   type="color"
                   value={form.primary_color}
                   onChange={handleChange}
-                  className="h-12 w-full cursor-pointer rounded-lg border border-slate-800 bg-slate-950"
+                  className="h-12 cursor-pointer"
                 />
               </div>
             </div>
 
-            {error ? (
-              <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-                {error}
-              </div>
-            ) : null}
+            {registerMutation.error && (
+              <Alert variant="destructive">
+                <AlertDescription>
+                  {(registerMutation.error as any)?.response?.data?.detail ?? "Unable to complete registration"}
+                </AlertDescription>
+              </Alert>
+            )}
 
-            <button
+            <Button
               type="submit"
-              className="w-full rounded-xl bg-blue-500 px-4 py-3 text-sm font-medium text-white transition hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isSubmitting}
+              className="w-full"
+              disabled={registerMutation.isPending}
             >
-              {isSubmitting ? "Creating account…" : "Create account"}
-            </button>
-            <p className="text-xs text-slate-500">
-              Already have an account? <Link to="/login" className="text-blue-400 hover:text-blue-300">Sign in</Link>
+              {registerMutation.isPending ? "Creating account…" : "Create account"}
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Already have an account? <Link to="/login" className="text-primary hover:text-primary/80">Sign in</Link>
             </p>
           </form>
-        </div>
+        </Card>
         <div className="flex-1 space-y-6">
-          <section className="rounded-3xl border border-slate-800 bg-slate-900/40 p-6">
-            <h2 className="text-lg font-semibold">Select a plan</h2>
-            <p className="mt-1 text-sm text-slate-400">Scale your AI assistant with usage-based tiers.</p>
+          <Card>
+            <CardHeader>
+              <CardTitle>Select a plan</CardTitle>
+              <CardDescription>Scale your AI assistant with usage-based tiers.</CardDescription>
+            </CardHeader>
+            <CardContent>
             <div className="mt-6 grid gap-4 md:grid-cols-2">
-              {plans.map((plan) => (
+              {plansLoading ? (
+                <div className="col-span-2 text-center text-muted-foreground">Loading plans...</div>
+              ) : (
+                plans.map((plan) => (
                 <button
                   key={plan.slug}
                   type="button"
@@ -282,7 +263,8 @@ const Register = () => {
                     ))}
                   </ul>
                 </button>
-              ))}
+                ))
+              )}
             </div>
             {selectedPlanDetails ? (
               <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-300">
@@ -294,10 +276,14 @@ const Register = () => {
                 </ul>
               </div>
             ) : null}
-          </section>
-          <section className="rounded-3xl border border-slate-800 bg-slate-900/40 p-6">
-            <h2 className="text-lg font-semibold">Preview your widget</h2>
-            <p className="mt-1 text-sm text-slate-400">Customize the look before embedding.</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Preview your widget</CardTitle>
+              <CardDescription>Customize the look before embedding.</CardDescription>
+            </CardHeader>
+            <CardContent>
             <div className="mt-4 flex justify-center">
               <div className="w-80 rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
                 <div className="space-y-2 text-sm">
@@ -313,7 +299,8 @@ const Register = () => {
                 </div>
               </div>
             </div>
-          </section>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

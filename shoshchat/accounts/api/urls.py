@@ -11,6 +11,7 @@ from .views import (
     PasswordResetConfirmView,
     PasswordResetRequestView,
     ProfileView,
+    PublicPlansView,
     RegisterOnboardView,
     RegisterView,
     RemoveMemberView,
@@ -26,6 +27,8 @@ from .views import (
 app_name = "accounts"
 
 urlpatterns = [
+    # Public endpoints
+    path("plans/", PublicPlansView.as_view(), name="public-plans"),
     # Authentication
     path("register/", RegisterView.as_view(), name="register"),
     path("register/onboard/", RegisterOnboardView.as_view(), name="register-onboard"),

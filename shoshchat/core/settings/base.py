@@ -17,6 +17,7 @@ ALLOWED_HOSTS: list[str] = config(
 
 SHARED_APPS: Final[list[str]] = [
     "django_tenants",
+    "corsheaders",
     "django.contrib.contenttypes",
     "django.contrib.auth",
     "django.contrib.admin",
@@ -54,6 +55,8 @@ TENANT_DOMAIN_MODEL: Final[str] = "tenancy.Domain"
 MIDDLEWARE: list[str] = [
     "django_tenants.middleware.main.TenantMainMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -109,10 +112,14 @@ TIME_ZONE: Final[str] = "UTC"
 USE_I18N: Final[bool] = True
 USE_TZ: Final[bool] = True
 
-STATIC_URL: Final[str] = "static/"
+STATIC_URL: Final[str] = "/static/"
 STATIC_ROOT: Final[Path] = BASE_DIR / "staticfiles"
-MEDIA_URL: Final[str] = "media/"
+MEDIA_URL: Final[str] = "/media/"
 MEDIA_ROOT: Final[Path] = BASE_DIR / "media"
+
+# Whitenoise settings - disable compression for debugging
+STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
+WHITENOISE_USE_FINDERS = True
 
 DEFAULT_AUTO_FIELD: Final[str] = "django.db.models.BigAutoField"
 
@@ -221,6 +228,19 @@ SECURE_REFERRER_POLICY: Final[str] = config("DJANGO_SECURE_REFERRER_POLICY", def
 CSRF_TRUSTED_ORIGINS: list[str] = config(
     "DJANGO_CSRF_TRUSTED_ORIGINS", default="", cast=Csv()
 )
+
+# CORS Configuration
+CORS_ALLOWED_ORIGINS = [
+    "http://138.197.155.4",
+    "https://138.197.155.4",
+]
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = False
+
+# CSRF Configuration  
+CSRF_COOKIE_HTTPONLY = False
+CSRF_USE_SESSIONS = False
+CSRF_COOKIE_SAMESITE = 'Lax'
 X_FRAME_OPTIONS: Final[str] = "DENY"
 
 # Email Configuration

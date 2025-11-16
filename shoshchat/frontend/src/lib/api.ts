@@ -2,8 +2,28 @@ import axios from "axios";
 
 import { clearSession, getAccessToken, refreshSession } from "./auth";
 
+// Get CSRF token from cookies
+const getCsrfToken = () => {
+  return document.cookie.split('; ')
+    .find(row => row.startsWith('csrftoken='))
+    ?.split('=')[1];
+};
+
+// Initialize CSRF token
+const initCsrfToken = async () => {
+  try {
+    await axios.get('/api/v1/csrf/', { withCredentials: true });
+  } catch (error) {
+    console.warn('Failed to fetch CSRF token:', error);
+  }
+};
+
+// Initialize CSRF token when module loads
+initCsrfToken();
+
 const api = axios.create({
-  baseURL: "/api/v1"
+  baseURL: "/api/v1",
+  withCredentials: true
 });
 
 api.interceptors.request.use((config) => {
@@ -12,6 +32,16 @@ api.interceptors.request.use((config) => {
     config.headers = config.headers ?? {};
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
+  // Add CSRF token for unsafe methods
+  if (config.method && !['get', 'head', 'options', 'trace'].includes(config.method.toLowerCase())) {
+    const csrfToken = getCsrfToken();
+    if (csrfToken) {
+      config.headers = config.headers ?? {};
+      config.headers['X-CSRFToken'] = csrfToken;
+    }
+  }
+  
   return config;
 });
 

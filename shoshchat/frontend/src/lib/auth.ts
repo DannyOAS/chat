@@ -101,4 +101,8 @@ export const refreshSession = async (): Promise<AuthTokens | null> => {
   }
 };
 
+export const logout = async () => {
+  clearSession();
+};
+
 export const hasSession = () => Boolean(getAccessToken());

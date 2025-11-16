@@ -10,9 +10,11 @@ export default defineConfig({
     },
   },
   server: {
+    host: '0.0.0.0',
     port: 5173,
+    hmr: false,
     proxy: {
-      "/api": "http://localhost:8000"
+      "/api": "http://shoshchat_web:8000"
     }
   }
 });

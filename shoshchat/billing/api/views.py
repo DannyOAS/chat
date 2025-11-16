@@ -90,9 +90,36 @@ class PlanListView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request, *args, **kwargs):
-        plans = Plan.objects.order_by("monthly_price")
-        serializer = PlanSerializer(plans, many=True)
-        return response.Response(serializer.data)
+        try:
+            plans = Plan.objects.order_by("monthly_price")
+            serializer = PlanSerializer(plans, many=True)
+            return response.Response(serializer.data)
+        except Exception:
+            # Fallback to default plans if database error
+            fallback_plans = [
+                {
+                    "slug": "starter", 
+                    "name": "Starter Plan", 
+                    "monthly_price": "19.99", 
+                    "message_quota": 1000, 
+                    "features": ["Basic AI", "Email Support"]
+                },
+                {
+                    "slug": "pro", 
+                    "name": "Professional Plan", 
+                    "monthly_price": "49.99", 
+                    "message_quota": 5000, 
+                    "features": ["Advanced AI", "Priority Support"]
+                },
+                {
+                    "slug": "enterprise", 
+                    "name": "Enterprise Plan", 
+                    "monthly_price": "99.99", 
+                    "message_quota": 15000, 
+                    "features": ["Premium AI", "24/7 Support"]
+                }
+            ]
+            return response.Response(fallback_plans)
 
 
 class SubscriptionSwitchView(APIView):
