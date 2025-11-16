@@ -1,0 +1,84 @@
+# Multi-stage production Dockerfile for ShoshChat Backend
+
+# Stage 1: Build dependencies
+FROM python:3.11-slim as builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements.txt ./
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.txt
+
+
+# Stage 2: Runtime
+FROM python:3.11-slim
+
+# Create non-root user for security
+RUN groupadd -r shoshchat && useradd -r -g shoshchat shoshchat
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DJANGO_SETTINGS_MODULE=core.settings.production
+
+WORKDIR /app
+
+# Install runtime dependencies only
+RUN apt-get update && apt-get install -y \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy Python dependencies from builder
+COPY --from=builder /app/wheels /wheels
+COPY --from=builder /app/requirements.txt .
+
+# Install dependencies from wheels
+RUN pip install --no-cache /wheels/* \
+    && rm -rf /wheels
+
+# Copy application code
+COPY --chown=shoshchat:shoshchat . .
+
+# Create necessary directories with proper permissions
+RUN mkdir -p /app/staticfiles /app/media /app/logs && \
+    chown -R shoshchat:shoshchat /app/staticfiles /app/media /app/logs
+
+# Collect static files
+RUN python manage.py collectstatic --noinput --settings=core.settings.production || true
+
+# Switch to non-root user
+USER shoshchat
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8000/healthz/ || exit 1
+
+# Expose port
+EXPOSE 8000
+
+# Run gunicorn with production settings
+CMD ["gunicorn", "core.wsgi:application", \
+     "--bind", "0.0.0.0:8000", \
+     "--workers", "4", \
+     "--threads", "2", \
+     "--worker-class", "gthread", \
+     "--worker-tmp-dir", "/dev/shm", \
+     "--max-requests", "1000", \
+     "--max-requests-jitter", "50", \
+     "--timeout", "30", \
+     "--keep-alive", "5", \
+     "--log-level", "info", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-"]
