@@ -1,42 +1,9 @@
 import path from "path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import { visualizer } from "rollup-plugin-visualizer";
-import viteCompression from "vite-plugin-compression";
 
 export default defineConfig(({ mode }) => ({
-  plugins: [
-    react({
-      // Enable Fast Refresh
-      fastRefresh: true,
-      // Babel plugins for production optimization
-      babel: {
-        plugins: mode === "production" ? ["babel-plugin-transform-remove-console"] : [],
-      },
-    }),
-    // Gzip compression for production
-    mode === "production" &&
-      viteCompression({
-        algorithm: "gzip",
-        ext: ".gz",
-        threshold: 10240, // Only compress files > 10KB
-      }),
-    // Brotli compression for production (better than gzip)
-    mode === "production" &&
-      viteCompression({
-        algorithm: "brotliCompress",
-        ext: ".br",
-        threshold: 10240,
-      }),
-    // Bundle size visualization
-    mode === "production" &&
-      visualizer({
-        filename: "./dist/stats.html",
-        open: false,
-        gzipSize: true,
-        brotliSize: true,
-      }),
-  ].filter(Boolean),
+  plugins: [react()],
 
   resolve: {
     alias: {

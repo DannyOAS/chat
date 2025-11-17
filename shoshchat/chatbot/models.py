@@ -23,7 +23,7 @@ class ChatSession(models.Model):
     class Meta:
         indexes = [
             models.Index(fields=['tenant', 'user_id'], name='chat_session_tenant_user_idx'),
-            models.Index(fields=['-last_interaction_at'], name='chat_session_last_interaction_idx'),
+            models.Index(fields=['-last_interaction_at'], name='chat_session_last_int_idx'),
         ]
 
     @classmethod

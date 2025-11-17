@@ -37,16 +37,22 @@ class GradientLLM:
         }
 
     def generate(self, message: str, **kwargs: Any) -> str:
-        payload = {
-            "inputs": [
-                {"role": "system", "content": kwargs.get("system_prompt", "")},
-                {"role": "user", "content": message},
-            ]
-        }
+        # Format for DO AI endpoint - use messages instead of inputs
+        messages = []
+        if system_prompt := kwargs.get("system_prompt", ""):
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": message})
+        
+        payload = {"messages": messages}
         if requests is None:  # pragma: no cover - environment misconfiguration
             raise RuntimeError("The requests library is required to call Gradient API")
+        # Add /api/v1/chat/completions if not already in endpoint
+        url = self.endpoint
+        if not url.endswith('/api/v1/chat/completions'):
+            url = url.rstrip('/') + '/api/v1/chat/completions'
+            
         response = requests.post(
-            self.endpoint,
+            url,
             headers=self.headers,
             json=payload,
             timeout=self.timeout,
@@ -54,7 +60,8 @@ class GradientLLM:
         response.raise_for_status()
         data = response.json()
         try:
-            return data["outputs"][0]["content"]
+            # Handle DO AI response format
+            return data["choices"][0]["message"]["content"]
         except (KeyError, IndexError) as exc:  # pragma: no cover - defensive
             logger.exception("Unexpected Gradient response: %s", data)
             raise ValueError("Unexpected response from Gradient API") from exc

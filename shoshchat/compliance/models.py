@@ -15,7 +15,7 @@ class AuditLog(models.Model):
 
     tenant = models.ForeignKey("tenancy.Tenant", on_delete=models.CASCADE, null=True, blank=True)  # Legacy, will be removed
     business = models.ForeignKey("business.Business", on_delete=models.CASCADE, null=True, blank=True)  # New single-domain
-    user = models.ForeignKey("accounts.User", on_delete=models.SET_NULL, null=True, blank=True)
+    user = models.ForeignKey("auth.User", on_delete=models.SET_NULL, null=True, blank=True)
     user_id_hash = models.CharField(max_length=128)
     action = models.CharField(max_length=100)  # e.g., "user.login", "knowledge.upload"
     event_type = models.CharField(max_length=50)
@@ -66,7 +66,7 @@ class UserConsent(models.Model):
     Tracks consent for different data processing purposes.
     """
 
-    user = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="consents")
+    user = models.ForeignKey("auth.User", on_delete=models.CASCADE, related_name="consents")
     purpose = models.CharField(
         max_length=50,
         choices=[

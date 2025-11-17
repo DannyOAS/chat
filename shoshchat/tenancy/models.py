@@ -1,15 +1,14 @@
-"""Tenant models leveraging django-tenants."""
+"""Legacy tenant models - simplified for data migration."""
 from __future__ import annotations
 
 from django.contrib.auth import get_user_model
 from django.db import models
-from django_tenants.models import DomainMixin, TenantMixin
 
 User = get_user_model()
 
 
-class Tenant(TenantMixin):
-    """Represents a tenant schema for the SaaS platform."""
+class Tenant(models.Model):
+    """Legacy tenant model - simplified for backward compatibility during migration."""
 
     RETAIL = "retail"
     FINANCE = "finance"
@@ -24,7 +23,7 @@ class Tenant(TenantMixin):
     stripe_customer_id = models.CharField(max_length=255, blank=True)
     onboarding_completed = models.BooleanField(default=False)
     owner = models.ForeignKey(
-        User, related_name="tenants", on_delete=models.SET_NULL, null=True, blank=True
+        User, related_name="legacy_tenants", on_delete=models.SET_NULL, null=True, blank=True
     )
     created_at = models.DateTimeField(auto_now_add=True)
     paid_until = models.DateField(null=True, blank=True)
@@ -35,25 +34,24 @@ class Tenant(TenantMixin):
     )
     widget_primary_color = models.CharField(max_length=7, default="#14b8a6")
 
-    auto_create_schema = True
-
     class Meta:
-        verbose_name = "Tenant"
-        verbose_name_plural = "Tenants"
+        verbose_name = "Legacy Tenant"
+        verbose_name_plural = "Legacy Tenants"
 
     def __str__(self) -> str:  # pragma: no cover - human readable
         return f"{self.name} ({self.schema_name})"
 
 
-class Domain(DomainMixin):
-    """Stores custom domains mapped to tenants."""
+class Domain(models.Model):
+    """Legacy domain model - simplified for backward compatibility."""
 
+    domain = models.CharField(max_length=253, unique=True)
     tenant = models.ForeignKey(Tenant, related_name="domains", on_delete=models.CASCADE)
     is_primary = models.BooleanField(default=False)
 
     class Meta:
-        verbose_name = "Domain"
-        verbose_name_plural = "Domains"
+        verbose_name = "Legacy Domain"
+        verbose_name_plural = "Legacy Domains"
 
     def __str__(self) -> str:  # pragma: no cover - human readable
         return self.domain
