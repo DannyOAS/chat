@@ -42,14 +42,14 @@ const generateId = () => {
   return `msg-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 };
 
-const buildStorageKey = (tenantId: string) => `${STORAGE_PREFIX}.${tenantId}`;
+const buildStorageKey = (widgetId: string) => `${STORAGE_PREFIX}.${widgetId}`;
 
-const loadStoredMessages = (tenantId: string): ChatMessage[] => {
+const loadStoredMessages = (widgetId: string): ChatMessage[] => {
   if (typeof window === "undefined") {
     return [];
   }
   try {
-    const stored = window.localStorage.getItem(buildStorageKey(tenantId));
+    const stored = window.localStorage.getItem(buildStorageKey(widgetId));
     if (!stored) return [];
     const parsed = JSON.parse(stored) as ChatMessage[];
     return Array.isArray(parsed) ? parsed : [];
@@ -59,20 +59,20 @@ const loadStoredMessages = (tenantId: string): ChatMessage[] => {
   }
 };
 
-const persistMessages = (tenantId: string, messages: ChatMessage[]) => {
+const persistMessages = (widgetId: string, messages: ChatMessage[]) => {
   if (typeof window === "undefined") {
     return;
   }
   try {
     const snapshot = messages.slice(-50);
-    window.localStorage.setItem(buildStorageKey(tenantId), JSON.stringify(snapshot));
+    window.localStorage.setItem(buildStorageKey(widgetId), JSON.stringify(snapshot));
   } catch (error) {
     console.warn("Unable to persist chat history", error);
   }
 };
 
-const useChat = (tenantId: string): UseChatResult => {
-  const initialMessages = useMemo(() => loadStoredMessages(tenantId), [tenantId]);
+const useChat = (widgetId: string): UseChatResult => {
+  const initialMessages = useMemo(() => loadStoredMessages(widgetId), [widgetId]);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,24 +81,24 @@ const useChat = (tenantId: string): UseChatResult => {
 
   useEffect(() => {
     if (hasMountedRef.current) {
-      persistMessages(tenantId, messages);
+      persistMessages(widgetId, messages);
     } else {
       hasMountedRef.current = true;
     }
-  }, [messages, tenantId]);
+  }, [messages, widgetId]);
 
   useEffect(() => {
-    setMessages(loadStoredMessages(tenantId));
+    setMessages(loadStoredMessages(widgetId));
     setError(null);
     setIsTyping(false);
     historyFetchedFor.current = null;
-  }, [tenantId]);
+  }, [widgetId]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
-    if (historyFetchedFor.current === tenantId) {
+    if (historyFetchedFor.current === widgetId) {
       return;
     }
     const token = window.localStorage.getItem("shoshchat.token");
@@ -143,14 +143,14 @@ const useChat = (tenantId: string): UseChatResult => {
         const response = await api.get<ApiSession[]>("/chat/sessions/");
         if (!isActive) return;
         const sessions = response.data ?? [];
-        const session = sessions.find((item) => item.user_id === `widget-${tenantId}`);
+        const session = sessions.find((item) => item.user_id === `widget-${widgetId}`);
         if (!session) {
-          historyFetchedFor.current = tenantId;
+          historyFetchedFor.current = widgetId;
           return;
         }
         const hydrated = hydrateMessages(session);
         if (hydrated.length === 0) {
-          historyFetchedFor.current = tenantId;
+          historyFetchedFor.current = widgetId;
           return;
         }
         setMessages((current) => (current.length > 0 ? current : hydrated));
@@ -163,7 +163,7 @@ const useChat = (tenantId: string): UseChatResult => {
         }
       } finally {
         if (shouldMarkFetched) {
-          historyFetchedFor.current = tenantId;
+          historyFetchedFor.current = widgetId;
         }
       }
     };
@@ -173,7 +173,7 @@ const useChat = (tenantId: string): UseChatResult => {
     return () => {
       isActive = false;
     };
-  }, [tenantId]);
+  }, [widgetId]);
 
   const sendMessage = useCallback(
     async (rawContent: string) => {
@@ -208,7 +208,8 @@ const useChat = (tenantId: string): UseChatResult => {
       try {
         const response = await api.post("/chat/", {
           message: content,
-          user_id: `widget-${tenantId}`,
+          user_id: `widget-${widgetId}`,
+          widget_id: widgetId,
         });
         const reply = response.data?.reply ?? "No response available.";
         setMessages((prev) =>
@@ -241,7 +242,7 @@ const useChat = (tenantId: string): UseChatResult => {
         setIsTyping(false);
       }
     },
-    [isTyping, tenantId]
+    [isTyping, widgetId]
   );
 
   const resetConversation = useCallback(() => {
@@ -249,9 +250,9 @@ const useChat = (tenantId: string): UseChatResult => {
     setError(null);
     setIsTyping(false);
     if (typeof window !== "undefined") {
-      window.localStorage.removeItem(buildStorageKey(tenantId));
+      window.localStorage.removeItem(buildStorageKey(widgetId));
     }
-  }, [tenantId]);
+  }, [widgetId]);
 
   return {
     messages,

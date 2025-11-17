@@ -4,8 +4,16 @@ import ChatWidget from "../components/ChatWidget";
 
 const Widget = () => {
   const [searchParams] = useSearchParams();
-  const tenantId = searchParams.get("tenant") || "default";
-  const accent = (searchParams.get("accent") as "retail" | "finance") || "retail";
+  const widgetId = searchParams.get("id");
+
+  // If no widget ID is provided, show error
+  if (!widgetId) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-red-500">Widget ID is required</div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     // Force transparent background for embedding
@@ -53,7 +61,7 @@ const Widget = () => {
         overflow: "hidden"
       }}
     >
-      <ChatWidget tenantId={tenantId} accent={accent} />
+      <ChatWidget widgetId={widgetId} />
     </div>
   );
 };

@@ -6,6 +6,7 @@ from rest_framework import generics, mixins, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from business.models import Business
 from tenancy.models import Domain, Tenant
 from .serializers import (
     DomainSerializer,
@@ -69,16 +70,18 @@ class TenantEmbedCodeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        tenant = Tenant.objects.filter(owner=request.user).first()
-        if tenant is None:
-            raise Http404("Tenant not found")
+        # Get business from request (set by BusinessMiddleware)
+        business = getattr(request, "business", None)
+        if business is None:
+            raise Http404("Business not found")
+
+        # Generate embed code with widget_id
         script = (
             "<script src=\"https://app.shoshchat.ai/widget-loader.js\" async></script>\n"
             "<script>\n"
             "  window.ShoshChatWidget = window.ShoshChatWidget || {};\n"
             "  window.ShoshChatWidget.init({\n"
-            f"    tenantId: '{tenant.schema_name}',\n"
-            f"    accent: '{tenant.widget_accent}'\n"
+            f"    widgetId: '{business.widget_id}'\n"
             "  });\n"
             "</script>"
         )

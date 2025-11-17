@@ -139,6 +139,8 @@ REST_FRAMEWORK: Final[dict[str, object]] = {
         "auth_reset": config("DRF_THROTTLE_AUTH_RESET", default="5/hour"),
         "auth_verify": config("DRF_THROTTLE_AUTH_VERIFY", default="5/hour"),
         "chat": config("DRF_THROTTLE_CHAT", default="120/min"),
+        "widget": config("DRF_THROTTLE_WIDGET", default="60/hour"),  # Anonymous widget requests
+        "widget_auth": config("DRF_THROTTLE_WIDGET_AUTH", default="500/hour"),  # Authenticated widget requests
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }

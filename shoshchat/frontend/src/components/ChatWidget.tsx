@@ -2,12 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import useChat from "../hooks/useChat";
 
 interface ChatWidgetProps {
-  tenantId: string;
-  accent?: "retail" | "finance";
+  widgetId: string;
 }
 
-const ChatWidget = ({ tenantId }: ChatWidgetProps) => {
-  const { messages, sendMessage, isTyping, error, resetConversation } = useChat(tenantId);
+const ChatWidget = ({ widgetId }: ChatWidgetProps) => {
+  const { messages, sendMessage, isTyping, error, resetConversation } = useChat(widgetId);
   const [isOpen, setIsOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
