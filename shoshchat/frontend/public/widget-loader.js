@@ -29,9 +29,14 @@
   window.ShoshChatWidget = {
     init(config) {
       const baseUrl = config.url ?? "https://app.shoshchat.ai";
-      const tenantId = config.tenantId ?? "default";
-      const accent = config.accent ?? "retail";
-      const widgetUrl = `${baseUrl}/widget?tenant=${tenantId}&accent=${accent}`;
+      const widgetId = config.widgetId;
+
+      if (!widgetId) {
+        console.error("ShoshChat: widgetId is required");
+        return;
+      }
+
+      const widgetUrl = `${baseUrl}/widget?id=${widgetId}`;
       createIframe({ src: widgetUrl });
     }
   };

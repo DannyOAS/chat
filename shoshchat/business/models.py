@@ -6,6 +6,8 @@ Simple and clean like Mailchimp, Shopify, etc.
 """
 from __future__ import annotations
 
+import uuid
+
 from django.conf import settings
 from django.db import models
 
@@ -37,6 +39,14 @@ class Business(models.Model):
     # Core fields
     name = models.CharField(max_length=255, help_text="Business name")
     slug = models.SlugField(max_length=100, unique=True, help_text="URL-friendly identifier")
+
+    # Widget identification (for anonymous widget usage)
+    widget_id = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False,
+        help_text="Unique widget ID for anonymous chat widget embedding",
+    )
 
     # Owner (one-to-one with user)
     owner = models.OneToOneField(
@@ -77,6 +87,13 @@ class Business(models.Model):
         default="bottom-right",
     )
 
+    # Widget security
+    allowed_domains = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of domains allowed to embed this widget (empty = all domains allowed)",
+    )
+
     # Status
     is_active = models.BooleanField(default=True)
 
@@ -91,6 +108,7 @@ class Business(models.Model):
         indexes = [
             models.Index(fields=["owner"]),
             models.Index(fields=["slug"]),
+            models.Index(fields=["widget_id"]),
             models.Index(fields=["is_active", "created_at"]),
         ]
 

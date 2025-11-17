@@ -23,3 +23,4 @@ class ChatSessionSerializer(serializers.ModelSerializer):
 class ChatRequestSerializer(serializers.Serializer):
     message = serializers.CharField()
     user_id = serializers.CharField(max_length=255)
+    widget_id = serializers.UUIDField(required=False, help_text="Widget ID for anonymous widget requests")
